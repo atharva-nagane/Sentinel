@@ -1,0 +1,99 @@
+# First draft. Ports and env vars match .env.example - update both together.
+# Dockerfiles for each service do not exist yet, so `docker-compose up` will not
+# work until each owner adds one under their service folder.
+
+version: "3.9"
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-capstone}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-capstone}
+      POSTGRES_DB: ${DB_NAME:-capstone}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      USER_SERVICE_URL: http://user-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+      PAYMENT_SERVICE_URL: http://payment-service:3003
+    depends_on:
+      - user-service
+      - order-service
+      - payment-service
+
+  user-service:
+    build: ./services/userService
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+
+  order-service:
+    build: ./services/orderService
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+
+  payment-service:
+    build: ./services/paymentService
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgres://${DB_USER:-capstone}:${DB_PASSWORD:-capstone}@database:5432/${DB_NAME:-capstone}
+    depends_on:
+      - database
+
+  monitoring:
+    build: ./monitoring
+    ports:
+      - "4001:4001"
+    environment:
+      PORT: 4001
+      TARGET_SERVICES: gateway,user-service,order-service,payment-service
+
+  failure-detection:
+    build: ./failureDetection
+    ports:
+      - "4002:4002"
+    environment:
+      PORT: 4002
+      MONITORING_URL: http://monitoring:4001
+
+  recovery:
+    build: ./recovery
+    ports:
+      - "4003:4003"
+    environment:
+      PORT: 4003
+      FAILURE_DETECTION_URL: http://failure-detection:4002
+
+  fault-injection:
+    build: ./faultInjection
+    ports:
+      - "4004:4004"
+    environment:
+      PORT: 4004
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "5173:5173"
+    environment:
+      MONITORING_URL: http://localhost:4001
+      FAILURE_DETECTION_URL: http://localhost:4002
+      RECOVERY_URL: http://localhost:4003
+      FAULT_INJECTION_URL: http://localhost:4004
+
+volumes:
+  db-data:

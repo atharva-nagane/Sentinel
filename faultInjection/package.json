@@ -1,0 +1,17 @@
+{
+  "name": "fault-injection",
+  "version": "0.1.0",
+  "description": "Accepts commands to deliberately break a service in a controlled, repeatable way",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

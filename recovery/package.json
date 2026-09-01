@@ -1,0 +1,17 @@
+{
+  "name": "recovery",
+  "version": "0.1.0",
+  "description": "Reacts to failure alerts with retry, backoff, circuit breaking, and rerouting",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

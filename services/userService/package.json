@@ -1,0 +1,16 @@
+{
+  "name": "user-service",
+  "version": "0.1.0",
+  "description": "User service - owns user data and exposes user-related endpoints",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
