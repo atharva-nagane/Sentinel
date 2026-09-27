@@ -84,16 +84,24 @@ services:
       - "4004:4004"
     environment:
       PORT: 4004
+      GATEWAY_URL: http://gateway:3000
+      USER_SERVICE_URL: http://user-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+      PAYMENT_SERVICE_URL: http://payment-service:3003
+    volumes:
+      # killService stops/starts sibling containers through the host's Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
 
   dashboard:
     build: ./dashboard
     ports:
       - "5173:5173"
+    # The Vite dev server proxies /api/* to these from inside the container.
     environment:
-      MONITORING_URL: http://localhost:4001
-      FAILURE_DETECTION_URL: http://localhost:4002
-      RECOVERY_URL: http://localhost:4003
-      FAULT_INJECTION_URL: http://localhost:4004
+      MONITORING_URL: http://monitoring:4001
+      FAILURE_DETECTION_URL: http://failure-detection:4002
+      RECOVERY_URL: http://recovery:4003
+      FAULT_INJECTION_URL: http://fault-injection:4004
 
 volumes:
   db-data:
