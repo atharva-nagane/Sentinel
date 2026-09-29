@@ -25,10 +25,17 @@ services:
       USER_SERVICE_URL: http://user-service:3001
       ORDER_SERVICE_URL: http://order-service:3002
       PAYMENT_SERVICE_URL: http://payment-service:3003
+      RECOVERY_URL: http://recovery:4003
     depends_on:
       - user-service
       - order-service
       - payment-service
+      - recovery
+    # Needed for faultInjection's addLatency to run `tc netem` inside this
+    # container. Also requires iproute2 in the image - see
+    # faultInjection/src/README.md.
+    cap_add:
+      - NET_ADMIN
 
   user-service:
     build: ./services/userService
@@ -36,6 +43,8 @@ services:
       - "3001:3001"
     environment:
       PORT: 3001
+    cap_add:
+      - NET_ADMIN
 
   order-service:
     build: ./services/orderService
@@ -43,6 +52,8 @@ services:
       - "3002:3002"
     environment:
       PORT: 3002
+    cap_add:
+      - NET_ADMIN
 
   payment-service:
     build: ./services/paymentService
@@ -53,6 +64,8 @@ services:
       DATABASE_URL: postgres://${DB_USER:-capstone}:${DB_PASSWORD:-capstone}@database:5432/${DB_NAME:-capstone}
     depends_on:
       - database
+    cap_add:
+      - NET_ADMIN
 
   monitoring:
     build: ./monitoring
@@ -77,6 +90,10 @@ services:
     environment:
       PORT: 4003
       FAILURE_DETECTION_URL: http://failure-detection:4002
+      GATEWAY_URL: http://gateway:3000
+      USER_SERVICE_URL: http://user-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+      PAYMENT_SERVICE_URL: http://payment-service:3003
 
   fault-injection:
     build: ./faultInjection
