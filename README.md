@@ -40,6 +40,7 @@ Wrapped around the application:
 | `failureDetection/` | Om Kottawar | Failure Detection |
 | `recovery/` | Atharva Nagane | Recovery Mechanisms |
 | `faultInjection/` | Swayum Bansal | Fault Injection & Visualization |
+| `faultInjection/src/injectors/addLatency.js` | Atharva Nagane | Recovery Mechanisms (by team agreement) |
 | `dashboard/` | Swayum Bansal | Fault Injection & Visualization |
 
 `docs/apiContracts.md` defines the payload shapes that cross these ownership
