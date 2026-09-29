@@ -66,7 +66,12 @@ chance to respond), and is what failure detection reads.
 
 - `reachable: false` means the `/health` poll failed or timed out; in that case the
   numeric fields may be `null` since there's no fresh data.
-- See `monitoring/src/README.md` for how these snapshots are stored/exposed.
+- Monitoring stores the latest snapshot for each service in memory. Since
+  monitoring and failure detection are separate services in Docker Compose,
+  `GET /snapshots` returns `{ "snapshots": [/* section 2 snapshots */] }` for
+  failure detection to consume. `GET /metrics/latest` returns the same response
+  for the dashboard. See `monitoring/src/README.md` for polling and storage
+  details.
 
 ---
 

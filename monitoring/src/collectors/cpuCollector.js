@@ -1,9 +1,8 @@
 // Reads cpuPercent off a service's /health response.
 // Owner: Om Sawakare (Member 2)
-
-// TODO: implemented by Om Sawakare
 function collectCpu(healthPayload) {
-  return null;
+  const value = healthPayload?.metrics?.cpuPercent;
+  return Number.isFinite(value) ? value : null;
 }
 
 module.exports = collectCpu;

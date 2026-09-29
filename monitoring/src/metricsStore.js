@@ -1,12 +1,33 @@
-// Holds the most recent metric snapshot per service so failure detection and
-// the dashboard can read current state without re-polling every service.
+// Holds the most recent metric snapshot per service for the monitoring HTTP API.
 // Snapshot shape is defined in docs/apiContracts.md (section 2).
 // Owner: Om Sawakare (Member 2)
 
-// TODO: implemented by Om Sawakare
+const latestSnapshots = new Map();
+
+function setSnapshot(serviceName, snapshot) {
+  if (typeof serviceName !== "string" || serviceName.length === 0) {
+    throw new TypeError("serviceName must be a non-empty string");
+  }
+  if (!snapshot || typeof snapshot !== "object") {
+    throw new TypeError("snapshot must be an object");
+  }
+
+  latestSnapshots.set(serviceName, snapshot);
+  return snapshot;
+}
+
+function getLatestSnapshot(serviceName) {
+  return latestSnapshots.get(serviceName) || null;
+}
+
+function getAllSnapshots() {
+  return Array.from(latestSnapshots.values());
+}
+
 module.exports = {
-  getSnapshot(service) {
-    return null;
-  },
-  setSnapshot(service, snapshot) {},
+  getLatestSnapshot,
+  // Keep the starter API available for consumers that already use its name.
+  getSnapshot: getLatestSnapshot,
+  getAllSnapshots,
+  setSnapshot,
 };
