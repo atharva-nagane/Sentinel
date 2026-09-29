@@ -68,7 +68,23 @@ URLs come from `GATEWAY_URL`, `USER_SERVICE_URL`, `ORDER_SERVICE_URL`,
 Stats (`sent`, `succeeded`, `failed`, `skipped`, `avgLatencyMs`) show on the
 fault record live and when it ends.
 
-## Integration point with addLatency (Atharva)
+### addLatency
+
+Uses `tc netem` inside the target container (via `docker exec`, reusing
+`findContainer` from `lib/docker.js`) to add real network latency, rather than
+delaying the call from fault injection's own side - that way the delay is
+visible to monitoring's response-time collector on the target service itself,
+matching how the demo script describes it ("Response time visibly rises").
+Same handle shape as `killService`: `stop()` removes the delay early.
+
+**Requires the target container to run with the `NET_ADMIN` capability and
+have `iproute2` installed.** `docker-compose.yml` adds `cap_add: NET_ADMIN` to
+`gateway`, `user-service`, `order-service`, and `payment-service`, and each of
+those services' `Dockerfile` installs `iproute2` (alpine base images don't
+ship `tc` by default). If either is ever missing, `addLatency` fails fast with
+a clear error naming the problem rather than silently doing nothing.
+
+## Integration point with addLatency
 
 The dispatcher calls every injector the same way:
 
@@ -83,10 +99,7 @@ const handle = await injector(targetService, params);
 - Return value, either:
   - a handle `{ details?, done, stop?, progress? }`: `done` is a promise that
     settles when the fault ends (its resolved value is stored as `result`),
-    `stop()` ends it early, `progress()` returns live stats. `killService` and
-    `overloadService` both return this shape.
+    `stop()` ends it early, `progress()` returns live stats. `killService`,
+    `overloadService`, and `addLatency` all return this shape.
   - or nothing, in which case the dispatcher treats the fault as ending on its
     own after `durationSeconds`, with no early stop.
-
-`injectors/addLatency.js` is left for Atharva; the dispatcher already routes
-`addLatency` commands to it. Confirm the final signature against this section.

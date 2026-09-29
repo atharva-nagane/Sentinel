@@ -46,4 +46,7 @@ module.exports = {
   findContainer,
   stopContainer: (id) => docker(["stop", id]),
   startContainer: (id) => docker(["start", id]),
+  // Added by Atharva Nagane (Member 4) for addLatency.js, so it doesn't
+  // reimplement the same execFile/timeout/stderr handling as docker() above.
+  execInContainer: (id, args) => docker(["exec", id, ...args]),
 };
