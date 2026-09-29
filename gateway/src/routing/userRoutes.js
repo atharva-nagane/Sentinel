@@ -1,10 +1,27 @@
-// Express router that forwards requests under /users to the User Service,
-// propagating the x-request-id header.
-// Owner: Ritik Mishra (Member 1)
-
 const express = require("express");
+const axios = require("axios");
 const router = express.Router();
 
-// TODO: implemented by Ritik Mishra
+const TARGET_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+
+router.all("/*", async (req, res) => {
+  try {
+    const response = await axios({
+      method: req.method,
+      url: `${TARGET_URL}${req.url}`,
+      headers: {
+        'x-request-id': req.headers['x-request-id']
+      },
+      data: Object.keys(req.body || {}).length > 0 ? req.body : undefined
+    });
+    res.status(response.status).send(response.data);
+  } catch (error) {
+    if (error.response) {
+      res.status(error.response.status).send(error.response.data);
+    } else {
+      res.status(500).send({ error: 'User Service unavailable' });
+    }
+  }
+});
 
 module.exports = router;

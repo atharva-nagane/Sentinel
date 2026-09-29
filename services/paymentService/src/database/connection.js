@@ -1,6 +1,13 @@
-// Opens and exports the database connection pool used by the Payment Service.
-// Reads DATABASE_URL from the environment (see .env.example).
-// Owner: Ritik Mishra (Member 1)
+const { Pool } = require('pg');
 
-// TODO: implemented by Ritik Mishra
-module.exports = null;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
+module.exports = {
+  query: (text, params) => pool.query(text, params),
+};
