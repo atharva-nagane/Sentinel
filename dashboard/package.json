@@ -2,11 +2,13 @@
   "name": "dashboard",
   "version": "0.1.0",
   "description": "Live view of service health, alerts, and recovery actions",
+  "type": "module",
   "main": "src/index.jsx",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "dependencies": {
     "react": "^18.3.1",
