@@ -1,14 +1,38 @@
-// Entrypoint for the Order Service. Starts the express server, mounts the
-// health endpoint, and calls the Payment Service to complete an order.
-// Owner: Ritik Mishra (Member 1)
-
-const express = require("express");
-const healthEndpoint = require("./healthEndpoint");
+const express = require('express');
+const axios = require('axios');
+const { healthMiddleware } = require('./healthEndpoint');
 
 const app = express();
+app.use(express.json());
 
-app.use(healthEndpoint);
+// Add health endpoint monitoring
+app.use(healthMiddleware('orderService'));
 
-// TODO: implemented by Ritik Mishra
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3003';
+
+app.get('/', (req, res) => {
+  res.json({ message: 'Order Service Root', requestId: req.headers['x-request-id'] });
+});
+
+app.get('/test', async (req, res) => {
+  const reqId = req.headers['x-request-id'];
+  try {
+    const paymentRes = await axios.get(`${PAYMENT_SERVICE_URL}/test`, {
+      headers: { 'x-request-id': reqId }
+    });
+    res.json({
+      order: 123,
+      status: 'created',
+      paymentResponse: paymentRes.data,
+      requestId: reqId
+    });
+  } catch (error) {
+    console.error("Payment call failed", error.message);
+    res.status(500).json({ error: 'Payment call failed', details: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3002;
-app.listen(PORT);
+app.listen(PORT, () => {
+  console.log(`Order Service listening on port ${PORT}`);
+});

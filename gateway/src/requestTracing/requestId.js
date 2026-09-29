@@ -1,9 +1,9 @@
-// Express middleware that attaches an x-request-id header to every incoming
-// request (generating one if missing) so it can be propagated on downstream calls.
-// Owner: Ritik Mishra (Member 1)
+const { v4: uuidv4 } = require('uuid');
 
-// TODO: implemented by Ritik Mishra
 function attachRequestId(req, res, next) {
+  const reqId = req.headers['x-request-id'] || uuidv4();
+  req.headers['x-request-id'] = reqId; // ensure it's in the request for downstream routing
+  res.setHeader('x-request-id', reqId); // Optionally set on response as well
   next();
 }
 

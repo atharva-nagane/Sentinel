@@ -1,14 +1,21 @@
-// Entrypoint for the User Service. Starts the express server and mounts the
-// health endpoint monitoring will poll.
-// Owner: Ritik Mishra (Member 1)
-
-const express = require("express");
-const healthEndpoint = require("./healthEndpoint");
+const express = require('express');
+const { healthMiddleware } = require('./healthEndpoint');
 
 const app = express();
+app.use(express.json());
 
-app.use(healthEndpoint);
+// Add health endpoint monitoring
+app.use(healthMiddleware('userService'));
 
-// TODO: implemented by Ritik Mishra
+app.get('/', (req, res) => {
+  res.json({ message: 'User Service Root', requestId: req.headers['x-request-id'] });
+});
+
+app.get('/test', (req, res) => {
+  res.json({ user: 'Alice', id: 1, requestId: req.headers['x-request-id'] });
+});
+
 const PORT = process.env.PORT || 3001;
-app.listen(PORT);
+app.listen(PORT, () => {
+  console.log(`User Service listening on port ${PORT}`);
+});
