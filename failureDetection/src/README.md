@@ -1,14 +1,17 @@
-# Failure detection internals
+# Failure detection implementation
 
-Reads snapshots from monitoring over HTTP (shape in `docs/apiContracts.md`
-section 2). In Docker Compose, poll `GET ${MONITORING_URL}/snapshots`
-(`MONITORING_URL` defaults to `http://monitoring:4001`); the response is an
-object with a `snapshots` array. Monitoring and failure detection run in
-separate containers, so failure detection must not import the process-local
-`monitoring/src/metricsStore.js` directly. It applies the rules in
-`thresholdRules.js`, `heartbeatCheck.js`, and `timeoutDetector.js`, and calls
-`alertEmitter.js` when a service crosses from healthy to unhealthy.
+These files are for `failureDetection/` on top of the current `main` baseline.
+The implementation follows the repository's HTTP boundary: failure detection
+reads `GET ${MONITORING_URL}/snapshots` and publishes alerts to
+`POST ${RECOVERY_URL}/alerts`.
 
-Alert event shape is in `docs/apiContracts.md` section 3 - this is the contract
-between this workstream and both Member 4 (recovery) and Member 5 (dashboard), so
-any change here needs to be reflected in that doc and communicated to both.
+## Files
+
+- `src/index.js` - polling loop, rule orchestration, deduplication, HTTP API.
+- `src/heartbeatCheck.js` - tracks the latest reachable heartbeat and enforces the timeout.
+- `src/timeoutDetector.js` - handles monitoring's explicit `reachable: false` signal.
+- `src/thresholdRules.js` - central thresholds and numeric comparisons.
+- `src/alertEmitter.js` - single alert-envelope builder and recovery publisher.
+- `src/README.md` - the README content to place in the repository.
+- `test/failureDetection.test.js` - focused unit tests.
+- `package.json` - adds the `npm test` script.
