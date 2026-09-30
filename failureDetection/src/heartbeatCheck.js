@@ -1,5 +1,5 @@
 // Tracks the last time each service was seen reachable and flags stale heartbeats.
-// Owner: Om Kottawar (Member 3)
+// Owner: Omkar Kottawar (Member 3)
 
 const thresholds = require("./thresholdRules");
 

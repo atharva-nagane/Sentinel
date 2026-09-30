@@ -1,5 +1,5 @@
 // Flags the explicit reachable:false signal from monitoring immediately.
-// Owner: Om Kottawar (Member 3)
+// Owner: Omkar Kottawar (Member 3)
 
 function detectTimeout(service, snapshot) {
   if (

@@ -1,6 +1,6 @@
 // Entrypoint for failure detection. Reads monitoring snapshots, runs heartbeat,
 // timeout, and threshold checks against them, and emits alerts.
-// Owner: Om Kottawar (Member 3 - Failure Detection)
+// Owner: Omkar Kottawar (Member 3 - Failure Detection)
 
 const axios = require("axios");
 const express = require("express");

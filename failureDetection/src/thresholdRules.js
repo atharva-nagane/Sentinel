@@ -1,5 +1,5 @@
 // Central detection thresholds and numeric rule checks.
-// Owner: Om Kottawar (Member 3)
+// Owner: Omkar Kottawar (Member 3)
 
 function positiveNumberOr(value, fallback) {
   const parsed = Number(value);

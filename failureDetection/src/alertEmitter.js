@@ -1,5 +1,5 @@
 // Assembles and publishes the failure-detection alert contract.
-// Owner: Om Kottawar (Member 3)
+// Owner: Omkar Kottawar (Member 3)
 
 const crypto = require("crypto");
 const axios = require("axios");
