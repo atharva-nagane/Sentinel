@@ -36,54 +36,65 @@ Wrapped around the application:
 | `services/userService/` | Ritik Mishra | Distributed Application & Communication |
 | `services/orderService/` | Ritik Mishra | Distributed Application & Communication |
 | `services/paymentService/` | Ritik Mishra | Distributed Application & Communication |
-| `monitoring/` | Om Sawakare | System and Service Monitoring |
-| `failureDetection/` | Om Kottawar | Failure Detection |
+| `monitoring/` | Om Sawkare | System and Service Monitoring |
+| `failureDetection/` | Omkar Kottawar | Failure Detection |
 | `recovery/` | Atharva Nagane | Recovery Mechanisms |
 | `faultInjection/` | Swayum Bansal | Fault Injection & Visualization |
 | `faultInjection/src/injectors/addLatency.js` | Atharva Nagane | Recovery Mechanisms (by team agreement) |
 | `dashboard/` | Swayum Bansal | Fault Injection & Visualization |
 
 `docs/apiContracts.md` defines the payload shapes that cross these ownership
-boundaries (health payloads, alert events, recovery events, fault-injection
-commands). Read that file before wiring one workstream's output into another's
-input.
+boundaries (health payloads, monitoring snapshots, alert events, recovery
+events, fault-injection commands). Read that file before wiring one
+workstream's output into another's input.
+
+## Status
+
+All five workstreams are implemented and wired end to end: the gateway and
+three backend services expose `/health`; monitoring polls them into metric
+snapshots; failure detection applies heartbeat/timeout/threshold rules against
+those snapshots and raises alerts; recovery reacts with retry/backoff, circuit
+breaking, and traffic rerouting, and the gateway consults recovery's isolation
+list before proxying; fault injection can kill a service, add network latency,
+or overload it on demand; and the dashboard polls all of the above to show
+live service health, alerts, and the recovery timeline for each incident.
 
 ## Getting Started
 
-### What We've Built So Far (In Layman's Terms)
-We have successfully built the **foundation** of the Sentinel application. Think of this like the plumbing of a house before you install the sinks and appliances. 
-We built an **API Gateway** (the front door) and three backend services (**User**, **Order**, and **Payment**). 
-- **How it helps**: By having real, working services that talk to each other and connect to a database, the rest of the team now has something tangible to monitor, break, and fix! 
-- **Request Tracing**: When a request comes in the front door, we hand it a unique sticky note (an `x-request-id`). As that request travels from service to service, the sticky note gets passed along. This allows us to track exactly where a request went and how long it took.
-- **Health Contracts**: Every service now has a doctor's chart (the `/health` endpoint). If anyone asks how a service is doing, it responds with a highly standardized report showing its CPU usage, memory, how many requests it handled, and if it's currently failing.
+You will need [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+installed and running.
 
-### How to Setup and Run
-You will need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed on your machine.
-
-1. Ensure your `.env` file is set up (you can copy it from `.env.example`).
-2. Start the foundational backend services and database by running:
+1. Copy `.env.example` to `.env` and adjust if needed (defaults match
+   `docker-compose.yml`).
+2. Start the full stack:
    ```bash
-   docker compose up --build -d database gateway user-service order-service payment-service
+   docker compose up --build -d
    ```
+3. Open the dashboard at `http://localhost:5173`.
 
-### How to Test
-Once the containers are running, you can test the APIs from your terminal:
+### Demoing detection and recovery
 
-1. **Test the Multi-Hop Tracing:**
-   ```bash
-   curl -i http://localhost:3000/orders/test
-   ```
-   *You will see the Gateway forward this to the Order service, which calls the Payment service, which queries the Database. The `x-request-id` will be returned in the headers!*
+With the stack running, trigger a controlled failure from the dashboard's
+fault controls (or directly via `faultInjection`'s API, see
+`faultInjection/src/README.md`) and watch the incident move through the
+timeline:
 
-2. **Test the Health Endpoints:**
-   ```bash
-   curl -s http://localhost:3000/health
-   curl -s http://localhost:3003/health
-   ```
-   *You will see the exact JSON format that the monitoring tools will use to track the health of these services.*
+```bash
+curl -s -X POST http://localhost:4004/commands \
+  -H "content-type: application/json" \
+  -d '{"command":"addLatency","targetService":"paymentService","params":{"latencyMs":5000,"durationSeconds":30}}'
+```
 
-### Next Steps
-Now that the foundation is rock solid, the other workstreams are unblocked:
-- **Om Sawakare (Monitoring)**: Build the monitoring polling engine that hits these `/health` endpoints and aggregates the data.
-- **Swayum Bansal (Fault Injection)**: Build the tools to target the Payment Service and purposely break its Postgres database connection to simulate a crash.
-- **Om Kottawar (Failure Detection) & Atharva Nagane (Recovery)**: Build the logic to detect when the Payment Service's error rate spikes and automatically reroute or circuit-break the traffic!
+Monitoring picks up the degraded response time, failure detection raises an
+alert, recovery retries/circuit-breaks/reroutes, and the dashboard shows
+Normal → Failure Detected → Recovery Started → System Recovered for the
+incident in real time.
+
+### Useful checks
+
+```bash
+curl -s http://localhost:3000/health          # gateway
+curl -s http://localhost:4001/snapshots       # monitoring
+curl -s http://localhost:4002/alerts          # failure detection
+curl -s http://localhost:4003/events          # recovery
+```
