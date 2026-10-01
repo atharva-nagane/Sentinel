@@ -1,5 +1,5 @@
 // Reads errorRate and requestCount off a service's /health response.
-// Owner: Om Sawakare (Member 2)
+// Owner: Om Sawkare (Member 2)
 
 function collectErrorRate(healthPayload) {
   const metrics = healthPayload?.metrics;

@@ -1,6 +1,6 @@
 // Holds the most recent metric snapshot per service for the monitoring HTTP API.
 // Snapshot shape is defined in docs/apiContracts.md (section 2).
-// Owner: Om Sawakare (Member 2)
+// Owner: Om Sawkare (Member 2)
 
 const latestSnapshots = new Map();
 

@@ -1,6 +1,4 @@
-# First draft. Ports and env vars match .env.example - update both together.
-# Dockerfiles for each service do not exist yet, so `docker-compose up` will not
-# work until each owner adds one under their service folder.
+# Ports and env vars match .env.example - update both together.
 
 version: "3.9"
 

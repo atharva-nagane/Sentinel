@@ -1,5 +1,5 @@
 // Polls each service's /health endpoint and exposes the latest snapshots.
-// Owner: Om Sawakare (Member 2 - System and Service Monitoring)
+// Owner: Om Sawkare (Member 2 - System and Service Monitoring)
 
 const axios = require("axios");
 const express = require("express");

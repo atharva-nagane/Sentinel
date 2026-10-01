@@ -24,10 +24,11 @@ other services need no CORS setup. Everything is polled every 2 s
 | Recovery | `GET /api/recovery/events` (`VITE_RECOVERY_ENDPOINT`) | section 4 events | recovery timeline |
 | Faults | `/api/faults/commands`, `/api/faults/faults` | see `faultInjection/src/README.md` | fault controls |
 
-The monitoring, failure-detection and recovery routes are not in
-`docs/apiContracts.md` yet, so the defaults above are placeholders to confirm
-with Om Sawakare, Om Kottawar and Atharva; change them in `src/config.js` or with
-the `VITE_*` variables. Responses can be a plain array, an object wrapping one
+The monitoring, failure-detection and recovery routes above are confirmed
+against each service's actual implementation (`monitoring/src/index.js`,
+`failureDetection/src/index.js`, `recovery/src/index.js`) and match
+`docs/apiContracts.md`. Override them in `src/config.js` or with the
+`VITE_*` variables if a route ever changes. Responses can be a plain array, an object wrapping one
 (`{ alerts: [...] }`, `{ events: [...] }`, `{ snapshots: [...] }`), or an object
 keyed by service name. Raw `/health` payloads (section 1) are also accepted for
 health.
