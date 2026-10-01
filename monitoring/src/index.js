@@ -123,7 +123,14 @@ async function pollService(
   let snapshot;
 
   try {
+    const requestStartedAt = Date.now();
     const response = await client.get(target.url, { timeout: timeoutMs });
+    // How long monitoring itself waited for the response, as opposed to the
+    // self-reported avgResponseTimeMs below (the service's own view of how
+    // long IT takes to serve requests). A network-level problem between here
+    // and the service - like injected latency - slows this down without the
+    // service ever seeing it, so it wouldn't show up self-reported alone.
+    const observedResponseTimeMs = Date.now() - requestStartedAt;
     if (
       typeof response.status === "number" &&
       (response.status < 200 || response.status >= 300)
@@ -133,13 +140,17 @@ async function pollService(
 
     const healthPayload = response.data;
     const errorMetrics = errorRateCollector(healthPayload);
+    const selfReportedResponseTimeMs = responseTimeCollector(healthPayload);
     snapshot = {
       service: target.service,
       collectedAt: clock().toISOString(),
       reachable: true,
       cpuPercent: cpuCollector(healthPayload),
       memoryMb: memoryCollector(healthPayload),
-      avgResponseTimeMs: responseTimeCollector(healthPayload),
+      avgResponseTimeMs:
+        selfReportedResponseTimeMs === null
+          ? observedResponseTimeMs
+          : Math.max(selfReportedResponseTimeMs, observedResponseTimeMs),
       requestCount: numericMetric(errorMetrics.requestCount),
       errorRate: numericMetric(errorMetrics.errorRate),
     };

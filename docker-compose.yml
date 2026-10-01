@@ -1,7 +1,5 @@
 # Ports and env vars match .env.example - update both together.
 
-version: "3.9"
-
 services:
   database:
     image: postgres:16-alpine
@@ -13,6 +11,11 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-capstone}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
   gateway:
     build: ./gateway
@@ -25,15 +28,25 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:3003
       RECOVERY_URL: http://recovery:4003
     depends_on:
-      - user-service
-      - order-service
-      - payment-service
-      - recovery
+      user-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      recovery:
+        condition: service_healthy
     # Needed for faultInjection's addLatency to run `tc netem` inside this
     # container. Also requires iproute2 in the image - see
     # faultInjection/src/README.md.
     cap_add:
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   user-service:
     build: ./services/userService
@@ -43,6 +56,12 @@ services:
       PORT: 3001
     cap_add:
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3001/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   order-service:
     build: ./services/orderService
@@ -52,6 +71,12 @@ services:
       PORT: 3002
     cap_add:
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3002/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   payment-service:
     build: ./services/paymentService
@@ -61,9 +86,16 @@ services:
       PORT: 3003
       DATABASE_URL: postgres://${DB_USER:-capstone}:${DB_PASSWORD:-capstone}@database:5432/${DB_NAME:-capstone}
     depends_on:
-      - database
+      database:
+        condition: service_healthy
     cap_add:
       - NET_ADMIN
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3003/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   monitoring:
     build: ./monitoring
@@ -72,12 +104,34 @@ services:
     environment:
       PORT: 4001
       POLL_INTERVAL_MS: 3000
-      HEALTH_TIMEOUT_MS: 2000
+      # Comfortably above failureDetection's LATENCY_THRESHOLD_MS (2000ms
+      # default) so a service that's slow but still responding gets a
+      # distinct highLatency alert, instead of always timing out into the
+      # same "unreachable" alert a dead service would also produce.
+      HEALTH_TIMEOUT_MS: 5000
       TARGET_SERVICES: gateway,userService,orderService,paymentService
       GATEWAY_URL: http://gateway:3000
       USER_SERVICE_URL: http://user-service:3001
       ORDER_SERVICE_URL: http://order-service:3002
       PAYMENT_SERVICE_URL: http://payment-service:3003
+    # Waits for the services it's about to poll, so its first snapshots are
+    # real data rather than early "unreachable" reads from a service that
+    # just hadn't finished booting yet.
+    depends_on:
+      gateway:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:4001/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   failure-detection:
     build: ./failureDetection
@@ -86,6 +140,22 @@ services:
     environment:
       PORT: 4002
       MONITORING_URL: http://monitoring:4001
+    # Waits for recovery too, not just monitoring: an alert raised before
+    # recovery can accept POST /alerts is silently dropped (recovery logs
+    # and moves on, by design - see alertEmitter.js), which would otherwise
+    # leave that service's dashboard card stuck "unhealthy" forever with no
+    # recovery session to ever resolve it.
+    depends_on:
+      monitoring:
+        condition: service_healthy
+      recovery:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:4002/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   recovery:
     build: ./recovery
@@ -98,6 +168,12 @@ services:
       USER_SERVICE_URL: http://user-service:3001
       ORDER_SERVICE_URL: http://order-service:3002
       PAYMENT_SERVICE_URL: http://payment-service:3003
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:4003/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   fault-injection:
     build: ./faultInjection
@@ -112,6 +188,12 @@ services:
     volumes:
       # killService stops/starts sibling containers through the host's Docker.
       - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:4004/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
 
   dashboard:
     build: ./dashboard
@@ -123,6 +205,15 @@ services:
       FAILURE_DETECTION_URL: http://failure-detection:4002
       RECOVERY_URL: http://recovery:4003
       FAULT_INJECTION_URL: http://fault-injection:4004
+    depends_on:
+      monitoring:
+        condition: service_healthy
+      failure-detection:
+        condition: service_healthy
+      recovery:
+        condition: service_healthy
+      fault-injection:
+        condition: service_healthy
 
 volumes:
   db-data:

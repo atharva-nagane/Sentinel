@@ -47,6 +47,9 @@ async function waitForBreakerCooldown(breaker) {
 // different actions.
 async function runRecoveryPipeline(alert, session) {
   const breaker = getBreaker(alert.service);
+  const log = (msg) => console.log(`[recovery] ${alert.alertId} ${alert.service}: ${msg}`);
+
+  log(`alert received (${alert.reason}) - starting retry phase`);
 
   const retryAction = recoveryStore.startAction(session, "retry", {
     reason: alert.reason,
@@ -62,12 +65,18 @@ async function runRecoveryPipeline(alert, session) {
       {
         ...RETRY_OPTIONS,
         onAttempt: (attempt, err) => {
-          if (err) breaker.recordFailure();
+          if (err) {
+            breaker.recordFailure();
+            log(`retry attempt ${attempt + 1}/${RETRY_OPTIONS.retries + 1} failed: ${err.message}`);
+          } else {
+            log(`retry attempt ${attempt + 1}/${RETRY_OPTIONS.retries + 1} succeeded`);
+          }
         },
       }
     );
 
     recoveryStore.resolveAction(retryAction.recoveryId, { outcome: "succeeded" });
+    log("healthy again after a direct retry - no circuit breaking needed");
 
     // A direct retry success means the service is confirmed healthy right
     // now, regardless of what the breaker's state was left at by an earlier
@@ -76,12 +85,14 @@ async function runRecoveryPipeline(alert, session) {
     if (breaker.state !== "closed") breaker.forceClose();
     trafficRerouter.restore(alert.service);
     recoveryStore.endSession(session);
+    log("recovery session complete");
     return;
   } catch (err) {
     recoveryStore.resolveAction(retryAction.recoveryId, {
       outcome: "failed",
       details: { reason: err.message },
     });
+    log(`retries exhausted (${RETRY_OPTIONS.retries + 1}/${RETRY_OPTIONS.retries + 1} attempts failed)`);
     // Retries exhausted. The breaker has very likely tripped open from the
     // recordFailure calls above; fall through to the circuit-breaker phase.
   }
@@ -90,31 +101,44 @@ async function runRecoveryPipeline(alert, session) {
   if (breaker.state !== "closed") {
     trafficRerouter.isolate(alert.service, alert.reason);
     breakerAction = recoveryStore.startAction(session, "circuitBreakerOpen", breaker.getState());
+    log(`circuit breaker opened - gateway will stop routing to ${alert.service} until it recovers`);
   }
 
   for (let cycle = 0; cycle < HALF_OPEN_MAX_CYCLES; cycle += 1) {
     await waitForBreakerCooldown(breaker);
     if (!breaker.allowRequest()) continue;
 
+    log(`half-open trial probe ${cycle + 1}/${HALF_OPEN_MAX_CYCLES}`);
     try {
       await probeHealth(alert.service);
       breaker.recordSuccess();
+      log(`half-open trial probe ${cycle + 1}/${HALF_OPEN_MAX_CYCLES} succeeded`);
     } catch (err) {
       breaker.recordFailure();
+      log(`half-open trial probe ${cycle + 1}/${HALF_OPEN_MAX_CYCLES} failed: ${err.message}`);
       continue;
     }
 
     if (breaker.state === "closed") {
       trafficRerouter.restore(alert.service);
+      log(`circuit breaker closed - traffic to ${alert.service} restored`);
       if (breakerAction) {
         recoveryStore.resolveAction(breakerAction.recoveryId, { outcome: "succeeded", details: breaker.getState() });
       }
-      recoveryStore.startAction(session, "circuitBreakerClosed", breaker.getState());
+      // This action reports a fact (the breaker is closed) rather than
+      // kicking off more work, so it must resolve immediately - leaving it
+      // "inProgress" would make the dashboard's incident timeline (any
+      // inProgress action means "still recovering") never reach System
+      // Recovered even though the service is already healthy again.
+      const closedAction = recoveryStore.startAction(session, "circuitBreakerClosed", breaker.getState());
+      recoveryStore.resolveAction(closedAction.recoveryId, { outcome: "succeeded", details: breaker.getState() });
       recoveryStore.endSession(session);
+      log("recovery session complete");
       return;
     }
   }
 
+  log(`gave up after ${HALF_OPEN_MAX_CYCLES} half-open cycles - ${alert.service} remains isolated`);
   if (breakerAction) {
     recoveryStore.resolveAction(breakerAction.recoveryId, {
       outcome: "failed",

@@ -68,6 +68,8 @@ async function emitAlert(
     alerts.shift();
   }
 
+  console.log(`[failure-detection] ${alert.alertId} ${service}: ${reason} - alerting recovery`);
+
   try {
     await httpClient.post(recoveryAlertsUrl(recoveryUrl), alert, { timeout: 3000 });
   } catch (error) {
