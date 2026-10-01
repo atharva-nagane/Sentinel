@@ -54,4 +54,4 @@ function blockIfIsolated(serviceName) {
   };
 }
 
-module.exports = { startPolling, blockIfIsolated };
+module.exports = { startPolling, blockIfIsolated, refresh };

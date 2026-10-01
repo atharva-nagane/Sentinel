@@ -84,4 +84,11 @@ function healthMiddleware(serviceName) {
   };
 }
 
-module.exports = { healthMiddleware };
+// For tests only: clears the rolling request window between independent
+// createApp() instances in the same process, since requestLog above is
+// module-level state shared by every app built from this module.
+function reset() {
+  requestLog = [];
+}
+
+module.exports = { healthMiddleware, reset };

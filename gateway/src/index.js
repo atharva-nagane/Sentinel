@@ -6,27 +6,34 @@ const userRoutes = require("./routing/userRoutes");
 const orderRoutes = require("./routing/orderRoutes");
 const paymentRoutes = require("./routing/paymentRoutes");
 
-const app = express();
+function createApp() {
+  const app = express();
 
-// Parse JSON bodies if present
-app.use(express.json());
+  // Parse JSON bodies if present
+  app.use(express.json());
 
-// Apply health middleware first to track all requests
-app.use(healthMiddleware('gateway'));
+  // Apply health middleware first to track all requests
+  app.use(healthMiddleware('gateway'));
 
-// Ensure request IDs exist for all incoming requests
-app.use(attachRequestId);
+  // Ensure request IDs exist for all incoming requests
+  app.use(attachRequestId);
 
-// Keeps recoveryGuard's isolated-services cache warm so the checks below
-// don't block a request on a live call to recovery.
-startPolling();
+  // Mount service routers, refusing to proxy to anything recovery has isolated
+  app.use("/users", blockIfIsolated("userService"), userRoutes);
+  app.use("/orders", blockIfIsolated("orderService"), orderRoutes);
+  app.use("/payments", blockIfIsolated("paymentService"), paymentRoutes);
 
-// Mount service routers, refusing to proxy to anything recovery has isolated
-app.use("/users", blockIfIsolated("userService"), userRoutes);
-app.use("/orders", blockIfIsolated("orderService"), orderRoutes);
-app.use("/payments", blockIfIsolated("paymentService"), paymentRoutes);
+  return app;
+}
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Gateway listening on port ${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  // Keeps recoveryGuard's isolated-services cache warm so blockIfIsolated
+  // above doesn't block a request on a live call to recovery.
+  startPolling();
+  createApp().listen(PORT, () => {
+    console.log(`Gateway listening on port ${PORT}`);
+  });
+}
+
+module.exports = { createApp };
